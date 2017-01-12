@@ -3,7 +3,7 @@
 		<v-touch v-on:doubletap="addNewTodo(newTodo)">
 		<mt-field label="+" placeholder="我想..." v-model="newTodo" type="text"></mt-field>
 		</v-touch>
-		<v-touch v-for="todo in todos" v-on:swiperight="deleteTodo(todo)" v-on:tap="stateChange(todo)">
+		<v-touch v-for="todo in todos" @swiperight="deleteTodo(todo)" @tap="stateChange(todo)">
 		<mt-cell :title="todo.text" :class="{completed: todo.completed}" class="list-cell"></mt-cell>
 		</v-touch>
 	</div>
@@ -11,9 +11,23 @@
 
 <script> 
 import { Toast } from 'mint-ui'
+import Storage from 'store2'
 
 	export default {
 		name: 'homelist',
+		created() {
+			if(Storage.size()!=0){
+				this.todos.splice(0, this.todos.length)
+				Storage.remove('$remove')
+				let localData = Storage() 
+				for(let i in localData) {
+					this.todos.push(localData[i])
+				}
+			} else {
+				Storage.setAll(this.todos)	//start storage at first time
+				Storage.remove('$remove')
+			}
+		},
 		data() {
 			return {
 				todos: [
@@ -42,12 +56,18 @@ import { Toast } from 'mint-ui'
 						duration: 1500
 					})
 				}
-				todo.completed = !todo.completed
+				this.todos[this.todos.indexOf(todo)].completed = !todo.completed
+				let updateValue = todo.completed
+				let keys = Storage.keys()
+				Storage.set(keys[this.todos.indexOf(todo)], {'text': todo.text, 'completed': updateValue})
 			},
 			addNewTodo: function(newTodo){
 				if(newTodo) {
 					this.todos.push({text: newTodo, completed: false})
 					this.newTodo = ''
+					Storage(false)
+					Storage.setAll(this.todos)
+					Storage.remove('$remove')						
 				} else {
 					Toast({
 						message: '你的任务不是没有任务',
@@ -56,6 +76,8 @@ import { Toast } from 'mint-ui'
 				}
 			},
 			deleteTodo: function(todo){
+				let keys = Storage.keys()
+				Storage.remove(keys[this.todos.indexOf(todo)])	//delete in storage
 				this.todos.splice(this.todos.indexOf(todo), 1)
 				Toast({
 					message: '任务删除成功！',
